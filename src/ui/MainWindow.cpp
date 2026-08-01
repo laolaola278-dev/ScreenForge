@@ -156,8 +156,8 @@ UiPersistConfig MainWindow::CollectConfig() const {
 
 void MainWindow::onRefreshTargets() {
     if (!m_backend) return;
-    m_monitors = m_backend->EnumMonitors();
-    m_windows  = m_backend->EnumWindows();
+    m_monitors = m_backend->ListMonitors();
+    m_windows  = m_backend->ListWindows();
     // 重建列表：显示器 + 窗口（窗口 id 偏移 1000 区分）
     m_cmbTargets->clear();
     for (const auto& t : m_monitors) {
