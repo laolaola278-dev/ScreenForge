@@ -190,6 +190,4 @@ void RecorderEngine::WriteSessionJson() {
     }
 }
 
-RecorderEngine::~RecorderEngine() = default;
-
 } // namespace sf

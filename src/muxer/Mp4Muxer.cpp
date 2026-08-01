@@ -41,10 +41,12 @@ struct Mp4Muxer::Impl {
 
 Mp4Muxer::~Mp4Muxer() {
     if (m_impl && m_impl->open) Abort();
+    delete m_impl;
+    m_impl = nullptr;
 }
 
 bool Mp4Muxer::Initialize(const MuxConfig& cfg) {
-    m_impl = std::make_unique<Impl>();
+    m_impl = new Impl();
     m_lastError.clear();
 
     // 1) 分配输出上下文（mp4 muxer）
@@ -107,6 +109,8 @@ bool Mp4Muxer::Initialize(const MuxConfig& cfg) {
         if (avcodec_open2(c, codec, nullptr) < 0) {
             m_lastError = "avcodec_open2(AAC) 失败";
             avcodec_free_context(&c);
+            delete m_impl;
+            m_impl = nullptr;
             return false;
         }
         m_impl->aacCtx = c;
@@ -123,6 +127,10 @@ bool Mp4Muxer::Initialize(const MuxConfig& cfg) {
     // 6) 写头（empty_moov）
     if (avformat_write_header(m_impl->fmt, nullptr) < 0) {
         m_lastError = "avformat_write_header 失败";
+        avformat_free_context(m_impl->fmt);
+        m_impl->fmt = nullptr;
+        delete m_impl;
+        m_impl = nullptr;
         return false;
     }
 

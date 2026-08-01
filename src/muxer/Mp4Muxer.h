@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
+#include <string>
 #include <vector>
 
 #include "IMuxer.h"
@@ -38,7 +38,7 @@ private:
     bool EncodePcmChunk();   // 8-A：从 pcmBuf 取一个完整 AAC 帧（1024×ch）编码写入；不足返回 false
 
     struct Impl;
-    std::unique_ptr<Impl> m_impl;
+    Impl* m_impl = nullptr;
     std::string m_lastError;
 };
 
