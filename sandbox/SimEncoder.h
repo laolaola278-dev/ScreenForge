@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <functional>
+#include <random>
 #include <thread>
 
 #include "encoder/IEncoder.h"

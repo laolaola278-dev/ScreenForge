@@ -8,6 +8,8 @@
 
 #include <Windows.h>
 
+#include <d3dcompiler.h>
+
 #include <cstdio>
 #include <memory>
 #include <vector>

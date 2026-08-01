@@ -2,6 +2,8 @@
 
 #include <Windows.h>
 
+#include <wrl/client.h>
+
 #include <audioclient.h>
 #include <mmdeviceapi.h>
 

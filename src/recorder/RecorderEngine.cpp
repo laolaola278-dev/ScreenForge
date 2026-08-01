@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "SyntheticFrameSource.h"
+#include "../capture/ICaptureSource.h"
 
 namespace sf {
 namespace {
