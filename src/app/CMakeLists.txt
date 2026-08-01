@@ -7,8 +7,8 @@ add_executable(ScreenForge WIN32
     Logger.cpp
     UiBackend.cpp
     SmokeTest.cpp
-    ../muxer/MuxBench.cpp
-    ../sandbox/SandboxDemo.cpp
+    ${CMAKE_SOURCE_DIR}/src/muxer/MuxBench.cpp
+    ${CMAKE_SOURCE_DIR}/sandbox/SandboxDemo.cpp
 )
 
 target_link_libraries(ScreenForge PRIVATE
