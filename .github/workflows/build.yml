@@ -1,0 +1,41 @@
+name: Build ScreenForge
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # 必须用 windows-2022（VS2022 + MSVC 19.3x）。
+    # windows-latest 的 MSVC 19.51+ 已移除 stdext，与 Qt 6.5.3 不兼容。
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Qt 6.5
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.5.3'
+          arch: 'win64_msvc2019_64'
+
+      - name: CMake 配置
+        run: cmake -B build -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }} -DCMAKE_BUILD_TYPE=Release
+
+      - name: 编译
+        run: cmake --build build --config Release
+
+      - name: 部署 Qt 运行时
+        shell: pwsh
+        # MSVC 多配置生成器把 exe 输出到 build/bin/Release/，自动递归查找
+        run: |
+          $exe = Get-ChildItem -Path build -Recurse -Filter ScreenForge.exe | Select-Object -First 1
+          if (-not $exe) { Write-Error "未找到 ScreenForge.exe"; exit 1 }
+          windeployqt $exe.FullName
+          Write-Host "已部署: $($exe.FullName)"
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenForge-win64
+          path: build/bin/

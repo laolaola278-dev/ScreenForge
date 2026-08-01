@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ScreenForge · Sandbox Runtime Demo（模拟器）</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
+  :root { color-scheme: dark; }
+  body { font-family: 'Noto Sans SC', sans-serif; background: #05070d; color: #e6edf3; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .grid-bg { background-image:
+      linear-gradient(rgba(148,163,184,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148,163,184,.05) 1px, transparent 1px);
+      background-size: 44px 44px; }
+  .panel { border: 1px solid #1e293b; border-radius: 1rem; background: rgba(15,23,42,.45); }
+  .stat { transition: all .3s; }
+  .stat .v { font-size: 1.6rem; font-weight: 700; }
+  .rec-dot { width: 10px; height: 10px; border-radius: 50%; background: #f85149; display: inline-block; }
+  .rec-dot.blink { animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: .15; } }
+  canvas#screen { width: 100%; border-radius: .75rem; image-rendering: pixelated; }
+  #audioBar { height: 8px; border-radius: 4px; background: #1e293b; overflow: hidden; }
+  #audioFill { height: 100%; width: 0%; background: linear-gradient(90deg,#22d3ee,#3b82f6); transition: width .1s; }
+  .badge-sim { background: rgba(250,204,21,.1); border: 1px solid rgba(250,204,21,.35); color: #facc15; }
+  ::-webkit-scrollbar { width: 8px; } ::-webkit-scrollbar-thumb { background: #1e2440; border-radius: 8px; }
+</style>
+</head>
+<body class="antialiased overflow-x-hidden">
+
+<div class="fixed inset-0 grid-bg pointer-events-none"></div>
+
+<main class="relative max-w-6xl mx-auto px-5 py-10">
+
+  <!-- 头部 -->
+  <header class="flex flex-wrap items-center gap-3">
+    <div class="flex items-center gap-2.5">
+      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 text-white font-black">SF</span>
+      <div>
+        <h1 class="text-xl font-black leading-tight">ScreenForge <span class="text-slate-400 font-medium">Sandbox Runtime Demo</span></h1>
+        <p class="text-[11px] text-slate-500 mono">完整可操作的视频录制软件流程（模拟器）</p>
+      </div>
+    </div>
+    <div class="ml-auto flex items-center gap-2">
+      <span class="badge-sim mono text-[11px] px-3 py-1.5 rounded-full font-semibold">⚠ SANDBOX SIMULATOR · NOT real WGC/NVENC</span>
+      <span class="mono text-[11px] px-3 py-1.5 rounded-full border border-emerald-400/40 text-emerald-300" id="stateBadge">Idle</span>
+    </div>
+  </header>
+
+  <!-- 免责声明 -->
+  <div class="panel mt-5 p-4 text-[12px] leading-relaxed text-amber-200/90">
+    <b>明确声明：</b>本页面为 <b>Simulator</b>——所有画面、FPS、延迟、报告均为浏览器内 JS 模拟生成，
+    <b>不是</b>真实 WGC 捕获 / NVENC 编码 / FFmpeg 封装结果，禁止将其伪装为真实硬件验证。
+    真实 Windows 后端（WgcCaptureSource → FramePipeline → NvEncoderHardware → Mp4Muxer → RecorderEngine）完整保留于 C++ 工程，待真机运行。
+  </div>
+
+  <div class="grid lg:grid-cols-[1.5fr_1fr] gap-5 mt-5">
+
+    <!-- 左：虚拟屏幕 + 控制 -->
+    <div class="space-y-5">
+      <div class="panel p-4">
+        <div class="flex items-center justify-between mb-3">
+          <span class="mono text-[11px] text-slate-400">SyntheticCapture · 虚拟屏幕（1920×1080 模拟）</span>
+          <span id="recIndicator" class="hidden items-center gap-2 mono text-[11px] text-rose-400 font-bold">
+            <span class="rec-dot blink"></span>REC
+          </span>
+        </div>
+        <canvas id="screen" width="960" height="540"></canvas>
+        <div class="mt-3 flex items-center gap-3">
+          <button id="btnStart" class="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-white transition">▶ 开始录制</button>
+          <button id="btnPause" disabled class="flex-1 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold text-white transition">⏸ 暂停</button>
+          <button id="btnStop" disabled class="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 font-bold text-white transition">⏹ 停止</button>
+        </div>
+      </div>
+
+      <!-- 实时指标 -->
+      <div class="grid grid-cols-4 gap-3">
+        <div class="panel stat p-4"><p class="text-[11px] text-slate-500">FPS</p><p class="v text-cyan-300" id="mFps">0</p></div>
+        <div class="panel stat p-4"><p class="text-[11px] text-slate-500">Frame Count</p><p class="v" id="mFrames">0</p></div>
+        <div class="panel stat p-4"><p class="text-[11px] text-slate-500">Dropped Frames</p><p class="v text-amber-300" id="mDropped">0</p></div>
+        <div class="panel stat p-4"><p class="text-[11px] text-slate-500">Queue Depth</p><p class="v" id="mQueue">0</p></div>
+        <div class="panel stat p-4"><p class="text-[11px] text-slate-500">Encode Latency</p><p class="v text-fuchsia-300" id="mLat">0.0<span class="text-sm">ms</span></p></div>
+        <div class="panel stat p-4"><p class="text-[11px] text-slate-500">Audio Sync</p><p class="v text-emerald-300" id="mSync">0.0<span class="text-sm">ms</span></p></div>
+        <div class="panel stat p-4"><p class="text-[11px] text-slate-500">Duration</p><p class="v" id="mDur">0.0<span class="text-sm">s</span></p></div>
+        <div class="panel stat p-4"><p class="text-[11px] text-slate-500">状态</p><p class="v text-lg" id="mState">Idle</p></div>
+      </div>
+
+      <!-- 虚拟音频 -->
+      <div class="panel p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="mono text-[11px] text-slate-400">VirtualAudioSource · 虚拟音频（48kHz / stereo / 静音模拟）</span>
+          <span class="mono text-[10px] text-slate-600">SIMULATOR</span>
+        </div>
+        <div id="audioBar"><div id="audioFill"></div></div>
+        <p class="mono text-[10px] text-slate-500 mt-2" id="audioInfo">未启动</p>
+      </div>
+    </div>
+
+    <!-- 右：链路 + 报告 -->
+    <div class="space-y-5">
+      <div class="panel p-5">
+        <h2 class="font-bold text-sm mb-3">模拟链路（全部 Simulator）</h2>
+        <div class="mono text-[11px] leading-7 space-y-1">
+          <div class="text-cyan-300">SyntheticCapture</div>
+          <div class="text-slate-600">└─→ FrameQueue (SPSC · 满丢最旧)</div>
+          <div class="text-fuchsia-300">└─→ SimEncoder (IEncoder · 1~5ms 延迟)</div>
+          <div class="text-amber-300">└─→ SimMuxer (IMuxer · 虚拟 MP4)</div>
+          <div class="text-emerald-300">└─→ sandbox_recording_report.json</div>
+        </div>
+        <div class="mt-4 border-t border-slate-800 pt-3 text-[11px] text-slate-500 leading-relaxed">
+          真实后端保留（C++，待真机）：<br/>
+          <span class="mono text-[10px] text-slate-400">WgcCaptureSource → FramePipeline → NvEncoderHardware → Mp4Muxer → RecorderEngine</span>
+        </div>
+      </div>
+
+      <div class="panel p-5">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-bold text-sm">录制报告</h2>
+          <button id="btnReport" disabled class="mono text-[11px] px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-bold disabled:opacity-40">⬇ 下载 JSON</button>
+        </div>
+        <pre id="reportBox" class="mono text-[10.5px] leading-relaxed bg-black/40 border border-slate-800 rounded-xl p-3 h-56 overflow-auto text-slate-400">（停止录制后生成 sandbox_recording_report.json）</pre>
+      </div>
+
+      <div class="panel p-5">
+        <h2 class="font-bold text-sm mb-2">C++ 等价命令（真机）</h2>
+        <pre class="mono text-[10.5px] leading-relaxed bg-black/40 border border-slate-800 rounded-xl p-3 text-cyan-200/80">ScreenForge.exe --sandbox-demo --seconds 10</pre>
+        <p class="mt-3 text-[11px] text-slate-500 leading-relaxed">
+          HTTP 预览（可选）：本沙盒环境不支持端口监听；如需局域网访问本页面：
+          <span class="mono text-[10px] text-slate-400">python -m http.server 8080</span> → 打开
+          <span class="mono text-[10px] text-emerald-300">http://localhost:8080</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-8 border-t border-slate-800/60 py-6 text-center">
+    <p class="mono text-[11px] text-slate-600">ScreenForge · SANDBOX SIMULATION ONLY · 所有数值为模拟结果，非真实硬件验证</p>
+  </footer>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// ScreenForge Sandbox Runtime Demo — 浏览器内模拟器
+// 全部组件为 Simulator，与 C++ sandbox/ 模块等价：
+//   SyntheticCapture → FrameQueue(SPSC) → SimEncoder → SimMuxer → Report
+// ═══════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('screen');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ── 状态 ──
+const S = {
+  running: false, paused: false,
+  frame: 0, dropped: 0, queue: [], queueMax: 0,
+  latSum: 0, latN: 0, latEma: 0,
+  firstVideoPts: 0, firstAudioQpc: 0, startT: 0, lastTick: 0,
+  fpsEma: 0, audioLevel: 0, report: null
+};
+const QUEUE_CAP = 7;
+
+// ── 元素 ──
+const $ = id => document.getElementById(id);
+const btnStart = $('btnStart'), btnPause = $('btnPause'), btnStop = $('btnStop');
+const stateBadge = $('stateBadge');
+
+// ── SyntheticCapture：60fps 生成帧 + 绘制虚拟屏幕 ──
+function drawFrame(tsMs) {
+  const t = tsMs / 1000;
+  // 渐变背景 + 移动白条 + 帧号 + 时间码（模拟"屏幕内容"）
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, `hsl(${(t*30)%360},60%,18%)`);
+  g.addColorStop(1, `hsl(${(t*30+60)%360},60%,10%)`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // 移动白条
+  const barX = (t * 240) % (W + 120) - 60;
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.fillRect(barX, 0, 12, H);
+  // 网格
+  ctx.strokeStyle = 'rgba(148,163,184,.15)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  // 帧号 + 时间码
+  ctx.fillStyle = '#0f172a'; ctx.fillRect(0, H-46, W, 46);
+  ctx.fillStyle = '#22d3ee'; ctx.font = 'bold 22px JetBrains Mono, monospace';
+  ctx.fillText(`FRAME ${String(S.frame).padStart(6,'0')}`, 16, H-16);
+  ctx.fillStyle = '#e6edf3';
+  const dur = (performance.now() - S.startT)/1000;
+  ctx.fillText(`T ${dur.toFixed(2)}s`, W-190, H-16);
+  ctx.fillStyle = '#f85149';
+  if (S.running && !S.paused) {
+    ctx.fillRect(W-170, 8, 14, 14);
+    ctx.fillStyle = '#fda4af'; ctx.font = 'bold 16px sans-serif';
+    ctx.fillText('REC', W-148, 22);
+  }
+}
+
+// ── FrameQueue（SPSC 模拟：满丢最旧）──
+function queuePush(f) {
+  if (S.queue.length >= QUEUE_CAP) { S.queue.shift(); S.dropped++; }
+  S.queue.push(f);
+  S.queueMax = Math.max(S.queueMax, S.queue.length);
+}
+function queuePop() { return S.queue.length ? S.queue.shift() : null; }
+
+// ── SimEncoder：异步消费（1~5ms 编码延迟）──
+async function encoderLoop() {
+  while (S.running) {
+    const f = queuePop();
+    if (f) {
+      const t0 = performance.now();
+      await new Promise(r => setTimeout(r, 1 + Math.random()*4));   // 模拟编码延迟 1~5ms
+      const lat = performance.now() - t0;
+      S.latSum += lat; S.latN++;
+      S.latEma = S.latEma === 0 ? lat : S.latEma*0.9 + lat*0.1;
+      if (S.firstVideoPts === 0) S.firstVideoPts = f.pts;
+      // 数据包 → SimMuxer（统计计数）
+    } else {
+      await new Promise(r => setTimeout(r, 1));
+    }
+  }
+}
+
+// ── VirtualAudioSource：每 10ms 音频块（独立节奏，模拟偏移）──
+let audioTimer = null;
+function startAudio() {
+  let blocks = 0;
+  audioTimer = setInterval(() => {
+    if (!S.running) return;
+    if (!S.paused) {
+      blocks++;
+      if (S.firstAudioQpc === 0) S.firstAudioQpc = performance.now()*10000;
+      // 虚拟电平（静音模拟 + 轻微波动）
+      S.audioLevel = 2 + Math.random()*6;
+      $('audioFill').style.width = S.audioLevel + '%';
+    }
+    $('audioInfo').textContent = `48kHz · stereo · 块数 ${blocks} · 电平 ${S.audioLevel.toFixed(1)}%`;
+  }, 10);
+}
+
+// ── 主渲染循环（SyntheticCapture 60fps pacing）──
+function tick(now) {
+  if (!S.running) return;
+  if (!S.paused) {
+    const pts = Math.round(now * 10000);           // QPC→100ns 模拟
+    queuePush({ pts });                            // 帧入队
+    S.frame++;
+    // FPS（EMA）
+    if (S.lastTick) {
+      const inst = 1000/(now - S.lastTick);
+      S.fpsEma = S.fpsEma === 0 ? inst : S.fpsEma*0.9 + inst*0.1;
+    }
+    S.lastTick = now;
+  }
+  drawFrame(now);
+  updateStats(now);
+  requestAnimationFrame(tick);
+}
+
+function updateStats(now) {
+  $('mFps').textContent = Math.round(S.fpsEma);
+  $('mFrames').textContent = S.frame;
+  $('mDropped').textContent = S.dropped;
+  $('mQueue').textContent = `${S.queue.length}/${QUEUE_CAP}`;
+  $('mLat').textContent = S.latEma.toFixed(1);
+  $('mDur').textContent = ((now - S.startT)/1000).toFixed(1);
+  // 音画同步：首视频 PTS vs 首音频 QPC（100ns→ms）
+  if (S.firstVideoPts && S.firstAudioQpc) {
+    $('mSync').textContent = (Math.abs(S.firstVideoPts - S.firstAudioQpc)/10000).toFixed(1);
+  }
+  const st = S.paused ? 'Paused' : 'Recording';
+  $('mState').textContent = S.running ? st : 'Idle';
+  stateBadge.textContent = S.running ? st : 'Idle';
+  stateBadge.className = 'mono text-[11px] px-3 py-1.5 rounded-full border ' +
+    (S.running ? (S.paused ? 'border-amber-400/40 text-amber-300' : 'border-rose-400/40 text-rose-300')
+               : 'border-slate-700 text-slate-400');
+  $('recIndicator').className = S.running && !S.paused ? 'flex items-center gap-2 mono text-[11px] text-rose-400 font-bold' : 'hidden';
+}
+
+// ── 控制 ──
+function setRunning(on) {
+  S.running = on;
+  btnStart.disabled = on;
+  btnStop.disabled = !on;
+  btnPause.disabled = !on;
+  btnReport.disabled = on;
+  if (on) { $('mState').textContent = 'Recording'; S.paused = false; btnPause.textContent = '⏸ 暂停'; }
+}
+
+btnStart.addEventListener('click', () => {
+  S.frame = 0; S.dropped = 0; S.queue = []; S.queueMax = 0;
+  S.latSum = 0; S.latN = 0; S.latEma = 0;
+  S.firstVideoPts = 0; S.firstAudioQpc = 0; S.fpsEma = 0;
+  S.startT = performance.now(); S.lastTick = 0;
+  setRunning(true);
+  startAudio();
+  encoderLoop();
+  requestAnimationFrame(tick);
+});
+
+btnPause.addEventListener('click', () => {
+  S.paused = !S.paused;
+  btnPause.textContent = S.paused ? '▶ 继续' : '⏸ 暂停';
+  $('mState').textContent = S.paused ? 'Paused' : 'Recording';
+});
+
+btnStop.addEventListener('click', () => {
+  S.running = false;
+  clearInterval(audioTimer);
+  setRunning(false);
+  $('mState').textContent = 'Idle';
+  stateBadge.textContent = 'Idle';
+  // 生成报告
+  const dur = (performance.now() - S.startT)/1000;
+  const latAvg = S.latN ? S.latSum/S.latN : 0;
+  const fps = dur > 0.5 ? Math.round(S.frame/dur) : 0;
+  const sync = (S.firstVideoPts && S.firstAudioQpc)
+    ? Math.abs(S.firstVideoPts - S.firstAudioQpc)/10000 : 0;
+  S.report = {
+    mode: "SANDBOX", capture: "Synthetic", encoder: "Simulator",
+    muxer: "SimMuxer (virtual MP4 report)",
+    fps, frames: S.frame, duration: +dur.toFixed(2),
+    latency: +latAvg.toFixed(2), droppedFrames: S.dropped,
+    audioSync: +sync.toFixed(2), queueDepth: S.queueMax,
+    note: "SANDBOX SIMULATION ONLY — NOT real WGC/NVENC/FFmpeg"
+  };
+  $('reportBox').textContent = JSON.stringify(S.report, null, 2);
+  $('reportBox').classList.add('text-emerald-200');
+});
+
+btnReport.addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(S.report, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sandbox_recording_report.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// 初始画面
+drawFrame(performance.now());
+</script>
+</body>
+</html>
