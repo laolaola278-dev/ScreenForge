@@ -13,4 +13,4 @@ add_subdirectory(muxer)
 add_subdirectory(recorder)
 add_subdirectory(audio)
 add_subdirectory(ui)
-add_subdirectory(../sandbox)   # Sandbox 模拟器（独立模块，不改核心）
+add_subdirectory(../sandbox ${CMAKE_BINARY_DIR}/sandbox)   # Sandbox 模拟器（独立模块，不改核心）
