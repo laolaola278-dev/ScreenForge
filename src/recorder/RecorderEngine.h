@@ -15,10 +15,11 @@
 #include "encoder/IEncoder.h"
 #include "muxer/IMuxer.h"
 
+#include "../simulation/SyntheticFrameSource.h"
+
 namespace sf {
 
 class ICaptureSource;
-class SyntheticFrameSource;
 
 enum class RecorderState {
     Idle, Initializing, Ready, Recording, Stopping, Error
@@ -39,6 +40,10 @@ class RecorderEngine {
 public:
     RecorderEngine() = default;
     ~RecorderEngine();
+    RecorderEngine(RecorderEngine&&) = delete;
+    RecorderEngine& operator=(RecorderEngine&&) = delete;
+    RecorderEngine(const RecorderEngine&) = delete;
+    RecorderEngine& operator=(const RecorderEngine&) = delete;
 
     bool Initialize(const RecorderConfig& cfg, IEncoder* encoder, IMuxer* muxer);
     bool StartRecording();

@@ -4,7 +4,6 @@
 
 #include <cstdio>
 
-#include "../simulation/SyntheticFrameSource.h"
 #include "../capture/WgcCaptureSource.h"
 
 namespace sf {
@@ -190,5 +189,7 @@ void RecorderEngine::WriteSessionJson() {
         fclose(f);
     }
 }
+
+RecorderEngine::~RecorderEngine() = default;
 
 } // namespace sf
