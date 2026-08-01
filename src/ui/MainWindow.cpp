@@ -3,6 +3,7 @@
 
 #include "MainWindow.h"
 
+#include <QApplication>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QFormLayout>
@@ -184,7 +185,7 @@ void MainWindow::onStartStop() {
         m_lblState->setText("Error: 无可用目标");
         return;
     }
-    UiStartConfig cfg = CollectConfig();
+    UiStartConfig cfg;
     // 解析分辨率
     const int res = m_cmbRes->currentIndex();
     if (res == 1) { cfg.width = 2560; cfg.height = 1440; }
@@ -294,7 +295,7 @@ void MainWindow::onExit() {
     m_exiting = true;
     if (m_backend && m_backend->IsRecording()) m_backend->Stop();
     SaveUiConfig(kConfigPath, CollectConfig());
-    qApp->quit();
+    QApplication::quit();
 }
 
 } // namespace sf

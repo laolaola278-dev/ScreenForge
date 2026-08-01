@@ -14,6 +14,7 @@
 #include <windows.graphics.directx.direct3d11.interop.h>
 
 #include <d3d11.h>
+#include <d3d11_4.h>
 #include <dxgi1_2.h>
 
 #include <atomic>
@@ -70,7 +71,10 @@ struct WgcCaptureSource::Impl {
         if (!frame) return;
 
         // 帧池纹理 → ID3D11Texture2D（零拷贝，仅 QI）
-        auto access = frame.Surface().as<::IDirect3DDXGIInterfaceAccess>();
+        auto surface = frame.Surface();
+        auto inspectable = surface.as<::IInspectable>();
+        winrt::com_ptr<::IDirect3DDXGIInterfaceAccess> access;
+        inspectable->QueryInterface(guid_of<::IDirect3DDXGIInterfaceAccess>(), access.put_void());
         winrt::com_ptr<::ID3D11Texture2D> texture;
         if (FAILED(access->GetInterface(guid_of<::ID3D11Texture2D>(), texture.put_void()))) {
             return;
@@ -169,7 +173,7 @@ bool WgcCaptureSource::Start() {
         }
         winrt::com_ptr<::IDirect3DDevice> d3d;
         check_hresult(CreateDirect3D11DeviceFromDXGIDevice(
-            dxgiDevice.get(), reinterpret_cast<::IInspectable**>(put_abi(d3d))));
+            dxgiDevice.Get(), reinterpret_cast<::IInspectable**>(put_abi(d3d))));
         auto d3dProjected =
             d3d.as<winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice>();
 
@@ -192,7 +196,7 @@ bool WgcCaptureSource::Start() {
         im.height.store(uint32_t(sz.Height));
 
         im.framePool = Direct3D11CaptureFramePool::Create(
-            d3dProjected, Direct3D11_BGRA, 2, sz);
+            d3dProjected, winrt::Windows::Graphics::DirectX::Direct3D11::Direct3D11_BGRA, 2, sz);
         im.session = im.framePool.CreateCaptureSession(item);
 
         im.token = im.framePool.FrameArrived(
