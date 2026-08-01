@@ -33,6 +33,20 @@ namespace sf {
 
 namespace {
 constexpr UINT kQueueCapacity = 2;   // 内部回退队列容量（仅未设置回调时使用）
+
+// 从 Direct3D11CaptureFrame 提取 ID3D11Texture2D
+Microsoft::WRL::ComPtr<ID3D11Texture2D> GetD3D11Texture(Direct3D11CaptureFrame const& frame) {
+    auto surface = frame.Surface();
+    auto inspectable = surface.as<::IInspectable>();
+    winrt::com_ptr<::ID3D11Texture2D> spTexture;
+    // 通过 IUnknown QI 获取 ID3D11Texture2D
+    auto unk = inspectable.as<::IUnknown>();
+    if (FAILED(unk->QueryInterface(guid_of<::ID3D11Texture2D>(), spTexture.put_void()))) {
+        return nullptr;
+    }
+    return Microsoft::WRL::ComPtr<ID3D11Texture2D>(spTexture.get());
+}
+
 }
 
 struct WgcCaptureSource::Item {
@@ -70,15 +84,42 @@ struct WgcCaptureSource::Impl {
         Direct3D11CaptureFrame frame = pool.TryGetNextFrame();
         if (!frame) return;
 
-        // 帧池纹理 → ID3D11Texture2D（零拷贝，仅 QI）
-        auto surface = frame.Surface();
-        auto inspectable = surface.as<::IInspectable>();
-        winrt::com_ptr<::IDirect3DDXGIInterfaceAccess> access;
-        inspectable->QueryInterface(guid_of<::IDirect3DDXGIInterfaceAccess>(), access.put_void());
-        winrt::com_ptr<::ID3D11Texture2D> texture;
-        if (FAILED(access->GetInterface(guid_of<::ID3D11Texture2D>(), texture.put_void()))) {
-            return;
+        // 帧池纹理 → ID3D11Texture2D（零拷贝，通过 GetD3D11Texture 获取）
+        auto texture = GetD3D11Texture(frame);
+        if (!texture) return;
+
+        // 构造 CaptureFrame（所有权：Capture 获得引用）
+        CaptureFrame fr;
+        fr.texture = texture;
+        fr.index   = frames.load() + 1;
+        fr.ts100ns = frame.SystemRelativeTime().count();
+
+        D3D11_TEXTURE2D_DESC d{};
+        fr.texture->GetDesc(&d);
+        fr.width  = d.Width;
+        fr.height = d.Height;
+
+        frames.fetch_add(1);
+
+        if (callback) {
+            callback(fr);
+        } else {
+            // 回退：内部队列
+            std::lock_guard lk(mtx);
+            Item item;
+            item.frame = std::move(frame);
+            item.texture = texture;
+            item.width  = d.Width;
+            item.height = d.Height;
+            item.format = d.Format;
+            item.captureQpc = 0;
+            item.index  = fr.index;
+            item.ts100ns = fr.ts100ns;
+            queue.push_back(std::move(item));
+            if (queue.size() > kQueueCapacity) queue.pop_front();
+            active = queue.back();
         }
+    }
 
         // 构造 CaptureFrame（所有权：Capture 获得引用）
         CaptureFrame fr;
@@ -196,7 +237,7 @@ bool WgcCaptureSource::Start() {
         im.height.store(uint32_t(sz.Height));
 
         im.framePool = Direct3D11CaptureFramePool::Create(
-            d3dProjected, winrt::Windows::Graphics::DirectX::Direct3D11::Direct3D11_BGRA, 2, sz);
+            d3dProjected, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, 2, sz);
         im.session = im.framePool.CreateCaptureSession(item);
 
         im.token = im.framePool.FrameArrived(
