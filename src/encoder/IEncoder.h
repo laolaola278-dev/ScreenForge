@@ -33,6 +33,7 @@ public:
     virtual uint64_t DroppedFrames() const = 0;
     virtual double   AvgLatencyMs() const = 0;
     virtual uint64_t BitstreamBytes() const = 0;
+    virtual std::string LastError() const { return {}; }
 };
 
 } // namespace sf

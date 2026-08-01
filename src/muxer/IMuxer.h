@@ -51,6 +51,7 @@ public:
     virtual uint64_t PacketsWritten() const = 0;
     virtual uint64_t BytesWritten() const = 0;
     virtual uint32_t FragmentsWritten() const = 0;
+    virtual std::string LastError() const { return {}; }
 };
 
 } // namespace sf
