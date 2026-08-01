@@ -80,7 +80,7 @@ void SampleSysStats(ID3D11Device* dev, SysStats& s,
                 Microsoft::WRL::ComPtr<IDXGIAdapter3> a3;
                 if (SUCCEEDED(adapter->QueryInterface(IID_PPV_ARGS(&a3)))) {
                     DXGI_QUERY_VIDEO_MEMORY_INFO mi{};
-                    if (SUCCEEDED(a3->QueryVideoMemoryInfo(0, DXGI_MEMORY_TYPE_LOCAL, &mi))) {
+                    if (SUCCEEDED(a3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &mi))) {
                         s.gpuMemMB = mi.CurrentUsage / (1024 * 1024);
                         s.gpuMemOk = true;
                     }

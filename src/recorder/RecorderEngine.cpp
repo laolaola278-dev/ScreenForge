@@ -4,8 +4,8 @@
 
 #include <cstdio>
 
-#include "SyntheticFrameSource.h"
-#include "../capture/ICaptureSource.h"
+#include "../simulation/SyntheticFrameSource.h"
+#include "../capture/WgcCaptureSource.h"
 
 namespace sf {
 namespace {
