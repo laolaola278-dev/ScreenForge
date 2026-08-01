@@ -63,7 +63,7 @@ UiBackend::UiBackend() {
 
 UiBackend::~UiBackend() { Stop(); }
 
-std::vector<CaptureTargetInfo> UiBackend::EnumMonitors() {
+std::vector<CaptureTargetInfo> UiBackend::ListMonitors() {
     std::vector<CaptureTargetInfo> out;
     std::vector<MonInfo> ms;
     ::EnumDisplayMonitors(nullptr, nullptr, EnumMonProc, reinterpret_cast<LPARAM>(&ms));
@@ -82,7 +82,7 @@ std::vector<CaptureTargetInfo> UiBackend::EnumMonitors() {
     return out;
 }
 
-std::vector<CaptureTargetInfo> UiBackend::EnumWindows() {
+std::vector<CaptureTargetInfo> UiBackend::ListWindows() {
     std::vector<CaptureTargetInfo> out;
     std::vector<HWND> ws;
     ::EnumWindows(EnumWinProc, reinterpret_cast<LPARAM>(&ws));

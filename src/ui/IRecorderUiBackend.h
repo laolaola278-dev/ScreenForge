@@ -49,8 +49,8 @@ public:
     virtual ~IRecorderUiBackend() = default;
 
     // 枚举
-    virtual std::vector<CaptureTargetInfo> EnumMonitors() = 0;
-    virtual std::vector<CaptureTargetInfo> EnumWindows() = 0;
+    virtual std::vector<CaptureTargetInfo> ListMonitors() = 0;
+    virtual std::vector<CaptureTargetInfo> ListWindows() = 0;
 
     // 控制（内部装配 RecorderEngine + 编码器 + 封装器 + 音频）
     virtual bool Start(const UiStartConfig& cfg, const CaptureTargetInfo& target) = 0;

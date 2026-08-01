@@ -26,8 +26,8 @@ public:
     UiBackend();
     ~UiBackend() override;
 
-    std::vector<CaptureTargetInfo> EnumMonitors() override;
-    std::vector<CaptureTargetInfo> EnumWindows() override;
+    std::vector<CaptureTargetInfo> ListMonitors() override;
+    std::vector<CaptureTargetInfo> ListWindows() override;
 
     bool Start(const UiStartConfig& cfg, const CaptureTargetInfo& target) override;
     void Stop() override;
