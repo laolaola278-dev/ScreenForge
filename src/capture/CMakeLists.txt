@@ -5,6 +5,7 @@ add_library(screenforge_capture STATIC
 
 target_include_directories(screenforge_capture PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/src
 )
 
 target_link_libraries(screenforge_capture PUBLIC

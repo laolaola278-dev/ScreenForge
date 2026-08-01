@@ -3,6 +3,7 @@
 // Phase 7-A — 配置持久化（config.json）
 // 纯数据 + Qt JSON 读写；无硬件依赖（不 include 任何硬件头）
 
+#include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 

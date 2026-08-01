@@ -187,7 +187,7 @@ bool Mp4Muxer::EncodePcmChunk() {
 
     for (int i = 0; i < kAacFrameSamples; ++i) {
         for (size_t c = 0; c < ch; ++c) {
-            static_cast<float*>(frame->extended_data[c])[i] =
+            reinterpret_cast<float*>(frame->extended_data[c])[i] =
                 float(im.pcmBuf[size_t(i) * ch + c]) * (1.0f / 32768.0f);
         }
     }
