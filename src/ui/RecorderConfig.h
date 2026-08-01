@@ -12,7 +12,7 @@
 namespace sf {
 
 struct UiPersistConfig {
-    std::string outputPath = "recording.mp4";
+    std::string outputPath = "视频存储/recording.mp4";
     std::string resolution = "1920x1080";   // 1080p / 1440p / 4K
     int  fps         = 60;
     int  bitrateMbps = 12;
@@ -46,7 +46,7 @@ inline UiPersistConfig LoadUiConfig(const std::string& path) {
     QFile f(QString::fromStdString(path));
     if (f.open(QIODevice::ReadOnly)) {
         const QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
-        c.outputPath  = o.value("outputPath").toString("recording.mp4").toStdString();
+        c.outputPath  = o.value("outputPath").toString("视频存储/recording.mp4").toStdString();
         c.resolution  = o.value("resolution").toString("1920x1080").toStdString();
         c.fps         = o.value("fps").toInt(60);
         c.bitrateMbps = o.value("bitrateMbps").toInt(12);
