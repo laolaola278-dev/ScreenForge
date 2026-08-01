@@ -197,7 +197,7 @@ bool WgcCaptureSource::Start() {
         im.height.store(uint32_t(sz.Height));
 
         im.framePool = Direct3D11CaptureFramePool::Create(
-            d3dProjected, DirectXPixelFormat::B8G8R8A8UIntNormalized, 2, sz);
+            d3dProjected, winrt::Windows::Graphics::DirectX::DirectXPixelFormat::B8G8R8A8UIntNormalized, 2, sz);
         im.session = im.framePool.CreateCaptureSession(item);
 
         im.token = im.framePool.FrameArrived(
