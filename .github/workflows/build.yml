@@ -19,8 +19,20 @@ jobs:
           version: '6.5.3'
           arch: 'win64_msvc2019_64'
 
+      - name: 下载 FFmpeg dev 包
+        shell: pwsh
+        run: |
+          # 下载 FFmpeg 7.1 dev 包（含 include 头文件 + lib 库）
+          curl.exe -L -o ffmpeg-dev.zip https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n7.1-latest-win64-lgpl-shared-7.1.zip
+          Expand-Archive -Path ffmpeg-dev.zip -DestinationPath ffmpeg-dev -Force
+          $ffmpegDir = Get-ChildItem -Path ffmpeg-dev -Directory | Select-Object -First 1
+          Write-Host "FFmpeg 解压到: $($ffmpegDir.FullName)"
+          # 从 shared 包中提取 include 和 lib（BtbN shared 包包含 include 和 .lib）
+          # 设置 FFMPEG_ROOT 环境变量供 CMake 使用
+          echo "FFMPEG_ROOT=$($ffmpegDir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: CMake 配置
-        run: cmake -B build -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }} -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }} -DCMAKE_BUILD_TYPE=Release -DFFMPEG_ROOT=${{ env.FFMPEG_ROOT }}
 
       - name: 编译
         run: cmake --build build --config Release
