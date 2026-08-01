@@ -14,6 +14,7 @@
 
 class QComboBox;
 class QLabel;
+class QLineEdit;
 class QPushButton;
 class QSystemTrayIcon;
 class QTimer;
@@ -56,6 +57,7 @@ private:
     QComboBox* m_cmbRes  = nullptr;        // 1080p/1440p/4K
     QComboBox* m_cmbFps  = nullptr;        // 30/60
     QComboBox* m_cmbBitrate = nullptr;     // 8/12/20 Mbps
+    QLineEdit* m_editPath = nullptr;        // 输出路径
 
     // 控制
     QPushButton* m_btnStart  = nullptr;

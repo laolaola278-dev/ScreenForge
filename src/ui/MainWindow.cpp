@@ -151,6 +151,7 @@ UiPersistConfig MainWindow::CollectConfig() const {
     c.fps = m_cmbFps->currentData().toInt();
     c.bitrateMbps = m_cmbBitrate->currentData().toInt();
     c.audioMode = m_cmbAudio->currentData().toInt();
+    c.outputPath = m_editPath->text().toStdString();
     return c;
 }
 
@@ -192,6 +193,7 @@ void MainWindow::onStartStop() {
     else if (res == 2) { cfg.width = 3840; cfg.height = 2160; }
     else { cfg.width = 1920; cfg.height = 1080; }
     cfg.fps = m_cmbFps->currentData().toInt();
+    cfg.outputPath = m_editPath->text().toStdString();
     cfg.bitrateKbps = uint32_t(m_cmbBitrate->currentData().toInt()) * 1000;
     cfg.audioMode = AudioMode(m_cmbAudio->currentData().toInt());
 
