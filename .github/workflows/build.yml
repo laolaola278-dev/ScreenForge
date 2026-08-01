@@ -37,14 +37,23 @@ jobs:
       - name: 编译
         run: cmake --build build --config Release
 
-      - name: 部署 Qt 运行时
+      - name: 部署 Qt 运行时 + FFmpeg DLL
         shell: pwsh
         # MSVC 多配置生成器把 exe 输出到 build/bin/Release/，自动递归查找
         run: |
           $exe = Get-ChildItem -Path build -Recurse -Filter ScreenForge.exe | Select-Object -First 1
           if (-not $exe) { Write-Error "未找到 ScreenForge.exe"; exit 1 }
+          $outDir = $exe.Directory.FullName
           windeployqt $exe.FullName
-          Write-Host "已部署: $($exe.FullName)"
+          Write-Host "已部署 Qt 运行时: $($outDir)"
+          # 复制 FFmpeg DLL
+          $ffmpegBin = Join-Path $env:FFMPEG_ROOT "bin"
+          if (Test-Path $ffmpegBin) {
+              Copy-Item -Path (Join-Path $ffmpegBin "*.dll") -Destination $outDir -Force
+              Write-Host "已复制 FFmpeg DLL 到 $($outDir)"
+          } else {
+              Write-Warning "FFmpeg bin 目录不存在: $($ffmpegBin)"
+          }
 
       - name: 上传产物
         uses: actions/upload-artifact@v4
