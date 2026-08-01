@@ -7,6 +7,8 @@ add_executable(ScreenForge WIN32
     Logger.cpp
     UiBackend.cpp
     SmokeTest.cpp
+    ../muxer/MuxBench.cpp
+    ../sandbox/SandboxDemo.cpp
 )
 
 target_link_libraries(ScreenForge PRIVATE
