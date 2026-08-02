@@ -38,8 +38,23 @@ target_include_directories(screenforge_muxer PUBLIC
     ${CMAKE_SOURCE_DIR}/src        # 供 "audio/AudioFrame.h" 包含
 )
 
-target_link_libraries(screenforge_muxer PUBLIC
-    ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB}
-)
+# 延迟加载 FFmpeg DLL（避免 DllMain 死锁导致 QApplication 构造卡住）
+# 原理：FFmpeg DLL 在 DllMain 中可能获取 loader lock，与 Qt 初始化冲突
+# 使用 /DELAYLOAD 让 FFmpeg DLL 在首次调用 avformat_xxx() 时才加载
+if(MSVC)
+    target_link_libraries(screenforge_muxer PUBLIC
+        ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB}
+        DelayImp.lib
+    )
+    target_link_options(screenforge_muxer PUBLIC
+        /DELAYLOAD:avformat.dll
+        /DELAYLOAD:avcodec.dll
+        /DELAYLOAD:avutil.dll
+    )
+else()
+    target_link_libraries(screenforge_muxer PUBLIC
+        ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB}
+    )
+endif()
 
 target_compile_definitions(screenforge_muxer PUBLIC NOMINMAX)
