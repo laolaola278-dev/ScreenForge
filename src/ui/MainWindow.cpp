@@ -7,7 +7,6 @@
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QFileDialog>
-#include <QFileInfo>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -92,6 +91,17 @@ void MainWindow::BuildUi() {
     cform->addRow("码率", m_cmbBitrate);
     auto* codecLbl = new QLabel("H264 (NVENC / 模拟器回退)");
     cform->addRow("编码", codecLbl);
+    m_editPath = new QLineEdit;
+    auto* pathRow = new QHBoxLayout;
+    auto* browse = new QPushButton("浏览...");
+    pathRow->addWidget(m_editPath, 1);
+    pathRow->addWidget(browse);
+    cform->addRow("输出路径", pathRow);
+    connect(browse, &QPushButton::clicked, this, [this] {
+        const QString path = QFileDialog::getSaveFileName(
+            this, "选择输出文件", m_editPath->text(), "MP4 视频 (*.mp4)");
+        if (!path.isEmpty()) m_editPath->setText(path);
+    });
     cfgBox->setLayout(cform);
     root->addWidget(cfgBox);
 
@@ -144,6 +154,7 @@ void MainWindow::ApplyConfig(const UiPersistConfig& c) {
     m_cmbFps->setCurrentIndex(c.fps >= 60 ? 1 : 0);
     m_cmbBitrate->setCurrentIndex(m_cmbBitrate->findData(c.bitrateMbps));
     m_cmbAudio->setCurrentIndex(c.audioMode);
+    m_editPath->setText(QString::fromStdString(c.outputPath));
     if (m_cmbBitrate->currentIndex() < 0) m_cmbBitrate->setCurrentIndex(1);
 }
 
@@ -154,7 +165,7 @@ UiPersistConfig MainWindow::CollectConfig() const {
     c.fps = m_cmbFps->currentData().toInt();
     c.bitrateMbps = m_cmbBitrate->currentData().toInt();
     c.audioMode = m_cmbAudio->currentData().toInt();
-    c.outputPath = m_editPath->text().toStdString();
+    c.outputPath = m_editPath->text().trimmed().toStdString();
     return c;
 }
 
@@ -196,15 +207,23 @@ void MainWindow::onStartStop() {
     else if (res == 2) { cfg.width = 3840; cfg.height = 2160; }
     else { cfg.width = 1920; cfg.height = 1080; }
     cfg.fps = m_cmbFps->currentData().toInt();
-    cfg.outputPath = m_editPath->text().toStdString();
+    cfg.outputPath = m_editPath->text().trimmed().toStdString();
+    if (cfg.outputPath.empty()) {
+        m_lblState->setText("Error: 请选择输出文件");
+        return;
+    }
     cfg.bitrateKbps = uint32_t(m_cmbBitrate->currentData().toInt()) * 1000;
     cfg.audioMode = AudioMode(m_cmbAudio->currentData().toInt());
 
     // 目标（优先显示器列表；若目标 id 在窗口列表则用窗口）
     CaptureTargetInfo target;
     bool found = false;
-    for (const auto& t : m_monitors) if (t.id == m_cmbTargets->currentData().toInt()) { target = t; found = true; break; }
-    if (!found) for (const auto& t : m_windows) if (t.id == m_cmbTargets->currentData().toInt()) { target = t; found = true; break; }
+    const int selectedId = m_cmbTargets->currentData().toInt();
+    const auto& targets = selectedId >= 1000 ? m_windows : m_monitors;
+    const int targetId = selectedId >= 1000 ? selectedId - 1000 : selectedId;
+    for (const auto& t : targets) {
+        if (t.id == targetId) { target = t; found = true; break; }
+    }
     if (!found) { m_lblState->setText("Error: 目标失效，请刷新"); return; }
 
     if (m_backend->Start(cfg, target)) {

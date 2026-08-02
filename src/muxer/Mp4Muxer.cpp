@@ -6,6 +6,7 @@
 #include "Mp4Muxer.h"
 
 #include <cstring>
+#include <filesystem>
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -48,6 +49,14 @@ Mp4Muxer::~Mp4Muxer() {
 bool Mp4Muxer::Initialize(const MuxConfig& cfg) {
     m_impl = new Impl();
     m_lastError.clear();
+
+    const auto parent = std::filesystem::u8path(cfg.outputPath).parent_path();
+    std::error_code ec;
+    if (!parent.empty()) std::filesystem::create_directories(parent, ec);
+    if (ec) {
+        m_lastError = "创建输出目录失败: " + cfg.outputPath;
+        return false;
+    }
 
     // 1) 分配输出上下文（mp4 muxer）
     if (avformat_alloc_output_context2(&m_impl->fmt, nullptr, "mp4",
