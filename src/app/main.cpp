@@ -152,6 +152,20 @@ int main(int argc, char* argv[]) {
         return rc;
     }
 
+    // --qt-test：仅验证 Qt 6 初始化是否正常
+    if (argc > 1 && std::strcmp(argv[1], "--qt-test") == 0) {
+        QApplication app(argc, argv);
+        LOG_INFO("Qt 6 initialized OK");
+        QTimer::singleShot(0, [&app]() {
+            LOG_INFO("Qt event loop running");
+            app.quit();
+        });
+        const int rc = app.exec();
+        LOG_INFO("Qt event loop exited");
+        sf::Logger::Shutdown();
+        return rc;
+    }
+
     // Phase 7-A：图形界面（默认启动）
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);   // 托盘常驻
