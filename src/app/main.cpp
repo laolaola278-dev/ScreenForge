@@ -167,6 +167,60 @@ int main(int argc, char* argv[]) {
         return rc;
     }
 
+    // --ui-test[N]：逐步定位 UI 卡死点
+    // 1: QApplication + UiBackend 构造（无 MainWindow）
+    // 2: + MainWindow 构造（无 show()）
+    // 3: + MainWindow show()
+    // 4: + app.exec()
+    if (argc > 1 && std::strcmp(argv[1], "--ui-test") == 0) {
+        int level = 4;
+        ParseU64(argc, argv, "--level", (uint64_t&)level);
+
+        QApplication app(argc, argv);
+        app.setQuitOnLastWindowClosed(false);
+        app.setStyleSheet(R"(
+            QMainWindow  { background-color: #0d1117; }
+            QGroupBox    { color:#e6edf3; border:1px solid #21262d; border-radius:8px;
+                           margin-top:10px; padding-top:8px; font-weight:600; }
+            QGroupBox::title { subcontrol-origin:margin; left:10px; padding:0 4px; }
+            QLabel       { color:#c9d1d9; }
+            QComboBox, QPushButton { background-color:#21262d; color:#e6edf3;
+                           border:1px solid #30363d; border-radius:6px; padding:6px 10px; }
+            QPushButton:hover { background-color:#30363d; }
+            QPushButton#start { background-color:#238636; font-weight:700; }
+            QPushButton#start:hover { background-color:#2ea043; }
+        )");
+        LOG_INFO("ui-test level=%d: QApplication OK", level);
+
+        sf::UiBackend backend;
+        LOG_INFO("ui-test level=%d: UiBackend constructed", level);
+
+        if (level >= 2) {
+            sf::MainWindow w(&backend);
+            LOG_INFO("ui-test level=%d: MainWindow constructed", level);
+
+            if (level >= 3) {
+                w.show();
+                LOG_INFO("ui-test level=%d: MainWindow shown", level);
+            }
+
+            if (level >= 4) {
+                QTimer::singleShot(2000, [&app]() {
+                    LOG_INFO("ui-test: event loop quit after 2s");
+                    app.quit();
+                });
+                const int rc = app.exec();
+                LOG_INFO("ui-test: app.exec() returned rc=%d", rc);
+                sf::Logger::Shutdown();
+                return rc;
+            }
+        }
+
+        LOG_INFO("ui-test level=%d: exiting without event loop", level);
+        sf::Logger::Shutdown();
+        return 0;
+    }
+
     // Phase 7-A：图形界面（默认启动）
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);   // 托盘常驻
