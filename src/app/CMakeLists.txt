@@ -24,6 +24,18 @@ target_link_libraries(ScreenForge PRIVATE
     Qt6::Widgets
 )
 
+# 延迟加载 FFmpeg DLL（避免 DllMain 死锁导致 QApplication 构造卡住）
+# FFmpeg DLL 在 DllMain 中可能获取 loader lock，与 Qt 6.5.3 初始化冲突
+# 延迟加载确保 FFmpeg DLL 在首次调用 avformat_xxx() 时才加载
+if(MSVC)
+    target_link_libraries(ScreenForge PRIVATE DelayImp.lib)
+    target_link_options(ScreenForge PRIVATE
+        /DELAYLOAD:avformat.dll
+        /DELAYLOAD:avcodec.dll
+        /DELAYLOAD:avutil.dll
+    )
+endif()
+
 # 硬件编码器（可选：NVENC SDK 存在时启用）
 if(TARGET screenforge_encoder_hw)
     target_link_libraries(ScreenForge PRIVATE screenforge_encoder_hw)
