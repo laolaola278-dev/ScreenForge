@@ -50,15 +50,9 @@ bool RecorderEngine::Initialize(const RecorderConfig& cfg, IEncoder* encoder, IM
         return false;
     }
 
-    // 初始化封装器（fragmented MP4）
-    MuxConfig mc;
-    mc.outputPath = cfg.mp4Path;
-    mc.width  = cfg.width;
-    mc.height = cfg.height;
-    mc.fps    = cfg.fps;
-    mc.extradata = cfg.extradata;
-    if (!m_mux->Initialize(mc)) {
-        m_lastError = "muxer 初始化失败（FFmpeg 是否可用？）: " + cfg.mp4Path;
+    // muxer 已由调用方初始化（UiBackend::Start），只验证是否已打开
+    if (!m_mux->IsOpen()) {
+        m_lastError = "muxer 尚未初始化（调用方未初始化 muxer）";
         m_state.store(RecorderState::Error);
         return false;
     }
